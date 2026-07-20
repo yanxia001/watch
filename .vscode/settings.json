@@ -4,5 +4,6 @@
     "idf.portWin": "COM9",
     "idf.openOcdConfigs": [
         "board/esp32s3-builtin.cfg"
-    ]
+    ],
+    "cmake.sourceDirectory": "C:/Users/32923/Desktop/watch/watch_sample1"
 }
