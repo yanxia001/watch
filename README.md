@@ -178,3 +178,7 @@ ESP32-S3 有两个 IIC 总线接口，根据用户的配置，总线接口可以
     4. 主机发送结束信号
 ### 2. IIC 代码开发
 ESP-IDF 提供了一套 API 来配置 IIC。我们本次项目开发采用 ESP32S3 自带的 IIC 接口，此接口函数封装比较完善，使用方便。要使用此功能，需要导入必要的头文件： #include "driver/i2c.h"介绍下一些函数
+#### 注意：使用头文件时要对cmake文件进行更改，不然引用会报错让：IIC 目录加入编译
+
+1. `esp_err_t i2c_param_config(i2c_port_t i2c_num, const i2c_config_t *i2c_conf)`
+    - i2c_num:端口号,有 I2C_NUM_0、I2C_NUM_1 两个端口可供配置
