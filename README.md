@@ -182,3 +182,71 @@ ESP-IDF 提供了一套 API 来配置 IIC。我们本次项目开发采用 ESP32
 
 1. `esp_err_t i2c_param_config(i2c_port_t i2c_num, const i2c_config_t *i2c_conf)`
     - i2c_num:端口号,有 I2C_NUM_0、I2C_NUM_1 两个端口可供配置
+    - i2c_config_t *i2c_conf：这是一个结构体![](./pic/27.png)
+    - i2c_config_t conf.mode： I2C 工作模式这里设置为I2C_MODE_MASTER，表示主设备模式。还有其他选项 I2C_MODE_SLAVE 表示从设备模式。
+    - i2c_conf.sda_io_num：SDA 引脚编号无，需自行定义
+    - i2c_conf.sda_pullup_en： SDA 引脚是否启用内部上拉 这里设置为 GPIO_PULLUP_ENABLE，启用内部上拉，避免悬空。
+    - i2c_conf.scl_io_num：SCL 引脚编号无，需自行定义
+    - i2c_conf.scl_pullup_en SCL:引脚是否启用内部上拉 这里设置为 GPIO_PULLUP_ENABLE，启用内部上拉，避免悬空。
+    - i2c_conf.master.clk_speed：以主设备模式工作时，I2C 的 时钟速度 这里设置为 400000，即 400kHz，是 I2C 的常用速度。
+2. `esp_err_t i2c_driver_install(i2c_port_t i2c_num,i2c_mode_t mode, size_t slv_rx_buf_len, size_t slv_tx_buf_len, int intr_alloc_flags);`
+    - i2c_num：端口号，有 I2C_NUM_0、I2C_NUM_1 两个端口可供配置
+    - mode：I2C 工作模式，包括 I2C_MODE_MASTER（主模式）、I2C_MODE_SLAVE（从模式）和 I2C_MODE_MASTER_SLAVE（主从模式），类型为 i2c_mode_t。
+    - slv_rx_buf_len：接收缓冲区长度，单位为字节，只有在从模式才用到，缓存大小必须大于 0，此处使用一个常量
+    - slv_tx_buf_len：发送缓冲区长度，单位为字节，只有在从模式才用到，缓存大小必须大于 0，此处使用一个常量
+    - intr_alloc_flags:驱动中断标志，用于控制是否支持 I2C 中断处理程序。此处使用一个常量 0 表示不使用中断。
+3. IIC 读写操作根据函数功能，以下函数可以归为一类进行讲解.
+   - i2c_cmd_link_create() 此函数用于创建一个新的 IIC 命令链，并返回其句柄。在发送或接收 IIC 数据时，需要先建立一个命令链，然后添加相应的命令。
+   - i2c_master_start(cmd) 向 IIC 命令链中添加开始信号。函数参数如下：cmd：要添加的IIC 命令链句柄
+   - i2c_master_stop(cmd) 向 IIC 命令链中添加停止信号。函数参数如下： cmd：要添加的IIC 命令链句柄
+   - i2c_master_write_byte() 向 IIC 命令链中添加一个字节的写操作函数参数如下：cmd_handle：要添加的 IIC 命令链句柄 data:要发送的数据 ack_en:使能 ACK 信号
+   - i2c_master_read() cmd_handle：要添加的 IIC 命令链句柄 *data：将存储接收到的字节的指针 data_len：数据大小 ack：ACK 信号
+   - i2c_master_write() cmd_handle：要添加的 IIC 命令链句柄 *data：将存储要发送的字节的指针 data_len：数据大小 ack：ACK 信号
+   - i2c_master_cmd_begin() 执行之前添加到 IIC 命令链中的操作。函数参数如下：i2c_num：需要操作的 I2C 端口号 cmd：要添加的 IIC 命令链句柄 ticks_to_wait：超时时间，单位为操作系统 tick
+   - i2c_cmd_link_delete(cmd) 删除 IIC 命令链。在执行完命令链后，需要调用此函数 释放资源。函数参数如下：cmd：要删除的 IIC 命令链句柄
+4. 主要应用的也是官方提供的封装程度较高的两个函数
+- `i2c_master_write_read_device(SENSER_USE_I2C_NUM, slave_addr, &reg_addr, 1, data, len, 1000 / 1);`
+    - 执行写入操作，然后读取 I2C 总线上的器件。在 write 和 read 之间使用重复的 start 信号，因此，在两个事务完成之前，总线不会被释放。此函数是 i2c_master_start（）、i2c_master_write（）、i2c_master_read（） 等的包装器。它只能在 I2C 主模式下调用。
+- 参数:
+    - i2c_num – 用于执行传输的 I2C 端口号
+    - device_address – I2C 从设备的 7 位地址
+    - write_buffer – 要读取的寄存器地址。I2C 读操作前，需先向从设备写入“寄存器地址”，告诉从设备接下来要读取哪个寄存器的数据
+    - write_size – 写入缓冲区的大小 （以字节为单位）
+    - read_buffer – 用于存储总线上接收的字节的缓冲区
+    - read_size – 读取缓冲区的大小 （以字节为单位）
+    - ticks_to_wait – 发出超时之前要等待的最大时钟周期数。
+- 返回值
+    - ESP_OK 成功 
+    - ESP_ERR_INVALID_ARG 参数错误 
+    - ESP_FAIL 发送命令错误，从服务器未确认传输。-
+    - ESP_ERR_INVALID_STATE 未安装 I2C 驱动程序或未处于主模式。
+    - ESP_ERR_TIMEOUT 由于总线繁忙而导致操作超时。
+- `i2c_master_write_to_device(SENSER_USE_I2C_NUM, slave_addr, data, len, 1000/ 1);`
+- 参数
+    - i2c_num – 用于执行传输的 I2C 端口号
+    - device_address – I2C 从设备的 7 位地址（不含读/写位，函数内部处理）。
+    - write_buffer – 指向要发送数据的缓冲区指针（如配置数据）。
+    - write_size – 写入缓冲区的大小 （以字节为单位）
+    - ticks_to_wait – 发出超时之前要等待的最大时钟周期数。
+- 返回值
+    - ESP_OK 成功 - 
+    - ESP_ERR_INVALID_ARG 参数错误 - 
+    - ESP_FAIL 发送命令错误，从服务器未确认传输。- 
+    - ESP_ERR_INVALID_STATE 未安装 I2C 驱动程序或未处于主模式。-
+    - ESP_ERR_TIMEOUT 由于总线繁忙而导致操作超时。
+## 传感器介绍
+### 一.AHT20
+它是温湿度传感器
+1. 通过原理图判断aht20的gpio口和使用的哪个iic![](./pic/28.png)![](./pic/29.png)
+2. 通过找aht20的说明书找到地址和通信方式
+3. 先在终端运行idf.py reconfigure
+   -  这个操作会：
+   重新扫描 CMake，把 components/BSP/AHT20/ 和 components/BSP/IIC/ 的路径写入 compile_commands.json
+   VS Code 的 C/C++ IntelliSense 就能从 compile_commands.json 中自动解析到正确的 include 路径
+
+4. ![](./pic/30.png) 
+5. 代码看具体的代码吧，就说俩注意的
+    - 在初始化函数中只用做第一步就好
+    - 接收数据的时候用个`i2c_master_read_from_device`就好，只读不用写寄存器地址
+    - 
+ 
