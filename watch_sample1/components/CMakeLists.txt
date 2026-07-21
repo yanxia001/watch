@@ -2,10 +2,14 @@
 
 set(src_dirs
             BSP/AHT20
-            BSP/IIC)
+            BSP/IIC
+            BSP/BMP280
+            BSP/MPU6050)
 set(include_dirs
             BSP/AHT20
-            BSP/IIC)
+            BSP/IIC
+            BSP/BMP280
+            BSP/MPU6050)
 set(requires
             driver)  
             

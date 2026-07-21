@@ -49,6 +49,16 @@ void iic_write_bytes(   uint8_t a    ,uint8_t*data ,size_t len)
 
 }
 
+// 从指定寄存器地址开始连续写入多个字节（MPU6050等传感器用）
+void iic_write_reg_bytes(uint8_t addr, uint8_t reg, uint8_t *data, size_t len)
+{
+    uint8_t write_buf[len + 1];
+    write_buf[0] = reg;
+    for (size_t i = 0; i < len; i++)
+        write_buf[i + 1] = data[i];
+    i2c_master_write_to_device(IIC_NUM, addr, write_buf, len + 1, 1000 / 1);
+}
+
 //纯读数据，不写寄存器地址（AHT20等传感器用）
 void iic_read_data(uint8_t a, uint8_t* data, size_t len)
 {

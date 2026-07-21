@@ -9,4 +9,5 @@ void iic_write_byte( uint8_t a      ,       uint8_t b ,  uint8_t dat);
 void iic_read_bytes(   uint8_t a      ,       uint8_t b              ,uint8_t*data ,size_t len);
 void iic_write_bytes(   uint8_t a    ,uint8_t*data ,size_t len);
 void iic_read_data(     uint8_t a    ,uint8_t*data ,size_t len);  // 纯读，不写寄存器地址（AHT20用）
+void iic_write_reg_bytes(uint8_t addr, uint8_t reg, uint8_t *data, size_t len);  // 从reg开始写多字节
 #endif
