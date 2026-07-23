@@ -24,24 +24,12 @@
 #include <math.h>
 #include "inv_mpu.h"
 #include "inv_mpu_dmp_motion_driver.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "iic.h"
-
-#define MPU6050_ADDR  0x68   // MPU6050 I2C 7位地址(AD0=0)
-
-/* Forward declarations for ESP32 I2C bridge (defined at end of file) */
-uint8_t MPU_Write_Len(uint8_t addr, uint8_t reg, uint8_t len, uint8_t *data);
-uint8_t MPU_Read_Len(uint8_t addr, uint8_t reg, uint8_t len, uint8_t *data);
-uint8_t MPU_Init(void);
-void mget_ms(unsigned long *time);
-unsigned short inv_row_2_scale(const signed char *row);
-
-#define portTICK_RATE_MS   portTICK_PERIOD_MS   // 新版ESP-IDF兼容
+#include "freertos/task.h"
 
 #define MPU6050							//定义我们使用的传感器为MPU6050
 #define MOTION_DRIVER_TARGET_MSP430		//定义驱动部分,采用MSP430的驱动(移植到STM32F1)
-
+#define portTICK_RATE_MS  portTICK_PERIOD_MS
 /* The following functions must be defined for this platform:
  * i2c_write(unsigned char slave_addr, unsigned char reg_addr,
  *      unsigned char length, unsigned char const *data)
@@ -60,17 +48,9 @@ unsigned short inv_row_2_scale(const signed char *row);
 //#include "msp430_clock.h"
 //#include "msp430_interrupt.h"
 
-// 用 variadic macro 自适应 3/4 参数两种调用约定
-// 3参数: i2c_write(reg, data, len)      → MPU_Write_Len(st.hw->addr, reg, len, data)
-// 4参数: i2c_write(addr, reg, len, data) → MPU_Write_Len(addr, reg, len, data)
-#define i2c_write_3(reg, data, len)       MPU_Write_Len(st.hw->addr, reg, len, data)
-#define i2c_write_4(addr, reg, len, data) MPU_Write_Len(addr, reg, len, data)
-#define i2c_read_3(reg, data, len)        MPU_Read_Len(st.hw->addr, reg, len, data)
-#define i2c_read_4(addr, reg, len, data)  MPU_Read_Len(addr, reg, len, data)
-#define GET_4TH_ARG(_1,_2,_3,_4,NAME,...) NAME
-#define i2c_write(...) GET_4TH_ARG(__VA_ARGS__, i2c_write_4, i2c_write_3)(__VA_ARGS__)
-#define i2c_read(...)  GET_4TH_ARG(__VA_ARGS__, i2c_read_4, i2c_read_3)(__VA_ARGS__)
-#define delay_ms(ms) vTaskDelay((ms) / portTICK_PERIOD_MS)
+#define i2c_write   i2c_write
+#define i2c_read    i2c_read
+#define delay_ms    delay_ms
 #define get_ms      mget_ms
 //static inline int reg_int_cb(struct int_param_s *int_param)
 //{
@@ -710,7 +690,7 @@ static int set_int_enable(unsigned char enable)
             tmp = BIT_DMP_INT_EN;
         else
             tmp = 0x00;
-        if (i2c_write(st.hw->addr, st.reg->int_enable, 1, &tmp))
+        if (i2c_write(st.reg->int_enable, &tmp, 1))
             return -1;
         st.chip_cfg.int_enable = tmp;
     } else {
@@ -722,7 +702,7 @@ static int set_int_enable(unsigned char enable)
             tmp = BIT_DATA_RDY_EN;
         else
             tmp = 0x00;
-        if (i2c_write(st.hw->addr, st.reg->int_enable, 1, &tmp))
+        if (i2c_write(st.reg->int_enable, &tmp, 1))
             return -1;
         st.chip_cfg.int_enable = tmp;
     }
@@ -783,18 +763,18 @@ int mpu_init(void)
 
     /* Reset device. */
     data[0] = BIT_RESET;
-    if (i2c_write(st.hw->addr, st.reg->pwr_mgmt_1, 1, data))
+    if (i2c_write(st.reg->pwr_mgmt_1, data, 1))
         return -1;
     vTaskDelay(100 / portTICK_RATE_MS);
 
     /* Wake up chip. */
     data[0] = 0x00;
-    if (i2c_write(st.hw->addr, st.reg->pwr_mgmt_1, 1, data))
+    if (i2c_write(st.reg->pwr_mgmt_1, data, 1))
         return -1;
 
 #if defined MPU6050
     /* Check product revision. */
-    if (i2c_read(st.hw->addr, st.reg->accel_offs, 6, data))
+    if (i2c_read(st.reg->accel_offs, data, 6))
         return -1;
     rev = ((data[5] & 0x01) << 2) | ((data[3] & 0x01) << 1) |
         (data[1] & 0x01);
@@ -810,7 +790,7 @@ int mpu_init(void)
             return -1;
         }
     } else {
-        if (i2c_read(st.hw->addr, st.reg->prod_id, 1, data))
+        if (i2c_read(st.reg->prod_id, data, 1))
             return -1;
         rev = data[0] & 0x0F;
         if (!rev) {
@@ -908,7 +888,7 @@ int mpu_init(void)
  *                          accel mode.
  *  @return     0 if successful.
  */
-int mpu_lp_accel_mode(unsigned short rate)
+int mpu_lp_accel_mode(unsigned char rate)
 {
     unsigned char tmp[2];
 
@@ -2222,9 +2202,9 @@ int mpu_run_self_test(long *gyro, long *accel)
     int ii;
 #endif
     int result;
-    unsigned char accel_fsr = 0, fifo_sensors, sensors_on;
-    unsigned short gyro_fsr, sample_rate = 0, lpf = 0;
-    unsigned char dmp_was_on;
+    unsigned char accel_fsr=0, fifo_sensors=0, sensors_on=0;
+    unsigned short gyro_fsr=0, sample_rate=0, lpf=0;
+    unsigned char dmp_was_on=0;
 
     if (st.chip_cfg.dmp_on) {
         mpu_set_dmp_state(0);
@@ -2684,7 +2664,7 @@ int mpu_get_compass_fsr(unsigned short *fsr)
  *  @return     0 if successful.
  */
 int mpu_lp_motion_interrupt(unsigned short thresh, unsigned char time,
-    unsigned short lpa_freq)
+    unsigned char lpa_freq)
 {
     unsigned char data[3];
 
@@ -2934,8 +2914,8 @@ uint8_t run_self_test(void)
 		/* Test passed. We can trust the gyro data here, so let's push it down
 		* to the DMP.
 		*/
-		float sens = 0;
-		unsigned short accel_sens = 0;
+		float sens=0;
+		unsigned short accel_sens=0;
 		mpu_get_gyro_sens(&sens);
         // //
         // printf("%f\n",sens);
@@ -3008,7 +2988,7 @@ void mget_ms(unsigned long *time)
 uint8_t mpu_dmp_init(void)
 {
 	uint8_t res=0;
-	if(MPU_Init() == 0)	//初始化MPU6050
+	if(mpu_init() == 0)	//初始化MPU6050
 	{
 		res=mpu_set_sensors(INV_XYZ_GYRO|INV_XYZ_ACCEL);//设置所需要的传感器
 		if(res)return 1;
@@ -3022,7 +3002,7 @@ uint8_t mpu_dmp_init(void)
 		if(res)return 5;
 		res=dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT|DMP_FEATURE_TAP|	//设置dmp功能
 		    DMP_FEATURE_ANDROID_ORIENT|DMP_FEATURE_SEND_RAW_ACCEL|DMP_FEATURE_SEND_CAL_GYRO|
-		    DMP_FEATURE_GYRO_CAL|DMP_FEATURE_PEDOMETER);
+		    DMP_FEATURE_GYRO_CAL);
 		if(res)return 6;
 		res=dmp_set_fifo_rate(100);	//设置DMP输出速率(最大不超过200Hz)
 		if(res)return 7;
@@ -3111,30 +3091,3 @@ void Offset6050(void)
 
 
 
-
-// ==================== I2C 桥接函数 (ESP32移植) ====================
-
-// I2C 连续写：从 reg 寄存器开始写入 len 字节
-// 返回值: 0=成功, 非0=失败
-uint8_t MPU_Write_Len(uint8_t addr, uint8_t reg, uint8_t len, uint8_t *data)
-{
-    uint8_t buf[len + 1];
-    buf[0] = reg;
-    for (uint8_t i = 0; i < len; i++)
-        buf[i + 1] = data[i];
-    return i2c_master_write_to_device(IIC_NUM, addr, buf, len + 1, 1000 / portTICK_PERIOD_MS);
-}
-
-// I2C 连续读：从 reg 寄存器开始读取 len 字节
-// 返回值: 0=成功, 非0=失败
-uint8_t MPU_Read_Len(uint8_t addr, uint8_t reg, uint8_t len, uint8_t *data)
-{
-    return i2c_master_write_read_device(IIC_NUM, addr, &reg, 1, data, len, 1000 / portTICK_PERIOD_MS);
-}
-
-// MPU6050 硬件初始化（封装 mpu_init）
-// 返回值: 0=成功, 非0=失败
-uint8_t MPU_Init(void)
-{
-    return (mpu_init() == 0) ? 0 : 1;
-}

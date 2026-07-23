@@ -23,8 +23,8 @@ uint8_t iic_read_byte(   uint8_t a      ,       uint8_t b)
 
 }
 
-//向寄存器写入一个字节  I2C 设备的 7 位地址    写入的寄存器地址 写入寄存器的数据
-void iic_write_byte( uint8_t a      ,       uint8_t b ,  uint8_t dat)
+//向寄存器写入一个字节  I2C 设备的 7 位地址    写入的寄存器地址  写入寄存器的数据
+void iic_write_byte( uint8_t a      ,       uint8_t b  ,  uint8_t dat)
 {
     uint8_t write_buf[2]={b,dat};
     i2c_master_write_to_device(IIC_NUM,a,write_buf,2,1000/1);
@@ -49,6 +49,8 @@ void iic_write_bytes(   uint8_t a    ,uint8_t*data ,size_t len)
 
 }
 
+
+
 // 从指定寄存器地址开始连续写入多个字节（MPU6050等传感器用）
 void iic_write_reg_bytes(uint8_t addr, uint8_t reg, uint8_t *data, size_t len)
 {
@@ -63,4 +65,26 @@ void iic_write_reg_bytes(uint8_t addr, uint8_t reg, uint8_t *data, size_t len)
 void iic_read_data(uint8_t a, uint8_t* data, size_t len)
 {
     i2c_master_read_from_device(IIC_NUM, a, data, len, 1000 / 1);
+}
+
+
+
+  // 伪代码示意：
+int i2c_write(uint8_t reg, uint8_t *data, uint8_t len) 
+{
+    iic_write_reg_bytes(0x68,reg,data,len);
+      // 调用你已有的 iic_write_reg_bytes(0x68, reg, data, len)
+      return 0;
+}
+
+int i2c_read(uint8_t reg, uint8_t *data, uint8_t len) 
+{
+    iic_read_bytes(0x68, reg, data, len);
+      // 调用你已有的 iic_read_bytes(0x68, reg, data, len)
+    return 0;
+}
+
+void delay_ms(unsigned long ms) 
+{
+    vTaskDelay(pdMS_TO_TICKS(ms));
 }

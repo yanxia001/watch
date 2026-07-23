@@ -1,4 +1,4 @@
-// BMP280 驱动 —— 温度/气压/海拔
+// BMP280 驱动 —— 气压/海拔
 #include "bmp280.h"
 #include "iic.h"
 #include "freertos/FreeRTOS.h"
@@ -73,7 +73,8 @@ uint8_t bmp280_read(int16_t *temp, int32_t *pressure)
     int32_t var1, var2, t_fine, p;
      //数据校准
  // Temperature
-    var1 = (((float)adc_T) / 16384.0 - ((float)bmp280Cal.dig_T1) / 1024.0) *((float)bmp280Cal.dig_T2);var2 = ((((float)adc_T) / 131072.0 - ((float)bmp280Cal.dig_T1) / 8192.0) * (((float)adc_T) / 131072.0 - ((float)bmp280Cal.dig_T1) / 8192.0)) *((float)bmp280Cal.dig_T3);
+    var1 = (((float)adc_T) / 16384.0 - ((float)bmp280Cal.dig_T1) / 1024.0) *((float)bmp280Cal.dig_T2);
+    var2 = ((((float)adc_T) / 131072.0 - ((float)bmp280Cal.dig_T1) / 8192.0) * (((float)adc_T) / 131072.0 - ((float)bmp280Cal.dig_T1) / 8192.0)) *((float)bmp280Cal.dig_T3);
     t_fine = (uint32_t)(var1 + var2);
     if (temp != NULL)
         *temp = (var1 + var2) / 512;
