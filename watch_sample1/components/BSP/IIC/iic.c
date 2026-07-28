@@ -38,6 +38,13 @@ void iic_read_bytes(   uint8_t a      ,       uint8_t b              ,uint8_t*da
     
 
 }
+void iic_read_bytes_0(   uint8_t a      ,       uint8_t b              ,uint8_t*data ,size_t len)
+{
+    
+    i2c_master_write_read_device(I2C_NUM_0,a,&b,1,data,len,1000/1);
+    
+
+}
 
 //向寄存器中写入多个字节
 void iic_write_bytes(   uint8_t a    ,uint8_t*data ,size_t len)

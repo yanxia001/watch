@@ -248,7 +248,8 @@ ESP-IDF 提供了一套 API 来配置 IIC。我们本次项目开发采用 ESP32
 5. 代码看具体的代码吧，就说俩注意的
     - 在初始化函数中只用做第一步就好
     - 接收数据的时候用个`i2c_master_read_from_device`就好，只读不用写寄存器地址
-    -
+    
+6. 对于该传感器最主要的就是crc校验和读取数据后将读取到的字节数据，转化成具体的数据
 ### 二.BMP20
 可以测量环境温湿度和大气压强
 1. 先找到它的设备地址
@@ -259,6 +260,7 @@ ESP-IDF 提供了一套 API 来配置 IIC。我们本次项目开发采用 ESP32
 6. 滤波器的选择![](./pic/35.png)
 7. Standby![](./pic/36.png)
 8. 具体的代码可以参考我的项目
+9. 这个传感器需要进行校准，校准是用的
 
 ### 三.三轴加速度陀螺仪 MPU6050
 MPU6050 包含一个三轴陀螺仪，三轴加速度计，并且可以通过 AUX_CL 和 AUX_DA 再扩展一个磁力计，内部设有一个可扩展的数字运动处理器 DMP，可以将欧拉角以四元数的形式输出。
@@ -349,3 +351,32 @@ esp_lcd_panel_dev_config_t panel_config = {
 };
 // 为 ST7789 创建 LCD 面板句柄，并指定 SPI IO 设备句柄
 ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &panel_handle));
+
+
+3. https://docs.espressif.com/projects/esp-idf/zh_CN/v6.0.2/esp32/api-reference/peripherals/lcd/spi_lcd.html 去这个网站上找
+
+### 八.蓝牙
+1. 蓝牙我是用的esp的官方示例上的代码。
+2. 创建一个新的项目搜索蓝牙
+
+
+
+### 九.lvgl
+
+1. 头文件报错的问题：去根目录的cmake下添加将lvgl显示搜索的带码
+2. ```#warning Please define or replace the macro MY_DISP_HOR_RES with the actual screen width, default v───────-alue 320 is used for now.```
+3. #warning 被 -Werror 当作错误要删除
+4. 修改lv_port_disp_init函数
+5. 使用模式三显示缓冲区采取第三种方式建立两个屏幕大小的缓冲区，这样能够更好的提升屏幕刷新率，防止画面撕裂
+6. 为什么要改port
+     - port是LVGL与硬件之间的“翻译层”，将LVGL的通用UI指令转换为具体硬件的操作（如SPI写屏、I2C读触摸）。没有port，LVGL无法在你的ESP32-S3手表上运行——这也是为什么移植LVGL时必须修改port文件，适配你的屏幕和触摸硬件。
+7. disp_flush是LVGL的显示回调函数，负责将LVGL内部渲染的缓冲区数据（lv_color_t *color_p）传输到物理屏幕（如ST7789V）。LVGL本身不关心硬件细节，因此需要通过disp_flush将通用数据转换为硬件可识别的操作（如SPI发送RGB565数据）
+8. disp_flush的修改内容
+   1. 从“逐像素绘制”改为“矩形填充”
+   2. 适配“双缓冲”机制
+   3. 适配硬件通信协议
+9. disp_init的修改是LVGL与硬件之间的“底层适配”：将LVGL的通用显示初始化逻辑，转换为ESP32-S3和ST7789V屏幕可识别的硬件操作（GPIO配置、SPI初始化、LCD初始化）。没有这个修改，LVGL无法在你的手表屏幕上正常显示UI。
+10. 然后去改```lv_port_indev```的触摸接口适配
+    1.  输入设备中只添加触摸板，其他设备相关函数删除
+    2.  ``touchpad_is_pressed``函数是用来判断手指的个数，根据cst816的寄存器来写个代码
+    3.  ``touchpad_get_xy``就是用来获取坐标的

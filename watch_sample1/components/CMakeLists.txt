@@ -7,7 +7,12 @@ set(src_dirs
             BSP/MPU6050
             BSP/QMC5883
             BSP/JFH142
-            BSP/ST7789)
+            BSP/ST7789
+            BSP/CST816
+            BSP/BLE/gatt_server_service_table/main
+            BSP/LED
+           
+            BSP/port)
 set(include_dirs
             BSP/AHT20
             BSP/IIC
@@ -15,12 +20,20 @@ set(include_dirs
             BSP/MPU6050
             BSP/QMC5883
             BSP/JFH142
-            BSP/ST7789)
+            BSP/ST7789
+            BSP/CST816
+            BSP/BLE/gatt_server_service_table/main
+            BSP/LED
+            
+            BSP/port)
 set(requires
             driver
             esp_driver_uart
             esp_driver_gpio
-            esp_lcd)
+            esp_lcd
+            nvs_flash
+            bt
+            lvgl)
             
 idf_component_register(SRC_DIRS ${src_dirs} INCLUDE_DIRS ${include_dirs} REQUIRES ${requires})
 

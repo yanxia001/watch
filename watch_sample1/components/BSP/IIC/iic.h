@@ -13,4 +13,5 @@ void iic_write_reg_bytes(uint8_t addr, uint8_t reg, uint8_t *data, size_t len); 
 int i2c_write(uint8_t reg, uint8_t *data, uint8_t len) ;
 int i2c_read(uint8_t reg, uint8_t *data, uint8_t len) ;
 void delay_ms(unsigned long ms);
+void iic_read_bytes_0(   uint8_t a      ,       uint8_t b              ,uint8_t*data ,size_t len);
 #endif
