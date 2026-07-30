@@ -1,4 +1,4 @@
-# watch项目
+# 基于esp32 s3 的 简易watch项目
 ## 一，项目介绍
 - 该项目通过紧贴皮肤来测量身体的数据指标
 - 可以测量心率，血压，血氧
@@ -250,6 +250,17 @@ ESP-IDF 提供了一套 API 来配置 IIC。我们本次项目开发采用 ESP32
     - 接收数据的时候用个`i2c_master_read_from_device`就好，只读不用写寄存器地址
     
 6. 对于该传感器最主要的就是crc校验和读取数据后将读取到的字节数据，转化成具体的数据
+7. 这个件采用的是crc8校验：CRC [7:0] = 1+X^4+X^5+X^8（校验公式）
+8. crc8校验中 0x31（二进制 1 0011 0001）= X^8+X^5+X^4+1
+9. 初始化：CRC寄存器赋值为初始值（如 0xFF）。
+异或输入：将当前字节与CRC寄存器的高位进行异或。
+移位判断：将CRC寄存器左移一位（最低位补0）。
+关键点：检查移出的那一位（原来的最高位）：
+如果是 1：将CRC寄存器与多项式（如 0x31）进行异或。
+如果是 0：不操作，继续下一次移位。
+循环：重复步骤3共8次（处理完一个字节的所有位）。
+输出：处理完所有数据后，寄存器里的值就是CRC。
+![](./pic/37.png)
 ### 二.BMP20
 可以测量环境温湿度和大气压强
 1. 先找到它的设备地址
@@ -261,20 +272,76 @@ ESP-IDF 提供了一套 API 来配置 IIC。我们本次项目开发采用 ESP32
 7. Standby![](./pic/36.png)
 8. 具体的代码可以参考我的项目
 9. 这个传感器需要进行校准，校准是用的
+10. 这个件跟aht差不多，从不同的寄存器中读出值 要注意的是读出的数据要移位凑够20位存到变量中
+```
+    uint8_t tmp[3];//温度
+    iic_read_bytes(BMP280_ADDR,BMP280_TEMPERATURE_MSB_REG,tmp,3);
+    adc_T = (tmp[0] << 12) | (tmp[1] << 4) | (tmp[2] >> 4);
+    uint8_t tmp1[3];//压力
+    iic_read_bytes(BMP280_ADDR,BMP280_PRESSURE_MSB_REG,tmp1,3);
+    adc_P = (tmp1[0] << 12) | (tmp1[1] << 4) | (tmp1[2] >> 4);
+```
+11. 然后就是算出结果
+```
+    #define SEA_LEVEL_PRESSURE 1013.25 // 标准海平面大气压力(hPa) 
+    #define TEMPERATURE 15.0 // 标准温度(摄氏度) 
+    #define GRAVITY 9.8067 // 重力加速度(m/s²) 
+    #define LAPSE_RATE 0.0065 // 标准气温垂直梯度(°C/m) 
+    double calculate_altitude(double pressure) { 
+        // 使用巴罗米特高度公式计算海拔高度
+        double pressure_hpa = pressure / 100.0; 
+        return 44330.0 * (1.0 - pow(pressure_hpa / SEA_LEVEL_PRESSURE, 0.1903)); 
+    } 
+    double calculate_pressure(double altitude) { 
+    // 使用巴罗米特高度公式计算气压
+        return SEA_LEVEL_PRESSURE * pow(1.0 - (LAPSE_RATE * altitude) /(TEMPERATURE + 273.15), GRAVITY / (LAPSE_RATE * 287.053)); 
+    }
+```
 
 ### 三.三轴加速度陀螺仪 MPU6050
 MPU6050 包含一个三轴陀螺仪，三轴加速度计，并且可以通过 AUX_CL 和 AUX_DA 再扩展一个磁力计，内部设有一个可扩展的数字运动处理器 DMP，可以将欧拉角以四元数的形式输出。
 1. 这个其实很简单
 2. 要把inv_mpu.c的写入读出函数替换成自己的函数就没了
+3. 然后实在不行就问ai
    
 ### 四。指南针qmc5883p
 1. 看手册
 2. 找到对应的寄存器
 3. 注意要向寄存器中写的数据 一般都会给示例
+4. 这个的读数都一样需要去手册中找或者上网搜一下
+   ```
+    uint8_t buffer[6];
+    int16_t var[3];
+    iic_read_bytes(QMC_I2C_ADDR, DATA_OUTPUT_X_LSB, buffer, sizeof(buffer));
+    var[0] = (buffer[1] << 8) | buffer[0];
+    var[1] = (buffer[3] << 8) | buffer[2];
+    var[2] = (buffer[5] << 8) | buffer[4];
+   ```
+5. 然后就是重要的校准
+   ```
+   *x = (int16_t)((var[0] - calibration.offset[0]) *calibration.weight[0]);
+   ```
+    - (var[0] - calibration.offset[0])：零点偏移校准（去除硬铁干扰）
+    - *calibration.weight[0]：灵敏度/量程校准（去除软铁干扰）
+```
+    // 1. 计算偏移
+    calibration.offset[0] = (range->x_min + range->x_max) / 2;
+
+    // 2. 计算半径
+    float x_avg_delta = (range->x_max - range->x_min) / 2.0f; // 加 f 表示浮点数
+
+    float avg_delta = (x_avg_delta + y_avg_delta + z_avg_delta) / 3.0f;
+
+    calibration.weight[0] = avg_delta / x_avg_delta;//平均值除以x的值
+
+
+```
 ### 五。jhf142
 1. 测量血压，心率什么的
 2. 看手册，gpio的设置，串口的设置
 3. 血压的数据不会立刻出
+4. 这个的手册是中文的看着简单的多
+5. 从寄存器中读但是要配置gpio和串口
 ### 六.内置 CUID 卡
 
 ### 七.屏幕
@@ -358,7 +425,8 @@ ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &panel_handle
 ### 八.蓝牙
 1. 蓝牙我是用的esp的官方示例上的代码。
 2. 创建一个新的项目搜索蓝牙
-
+3. 我觉得蓝牙是很好改的
+4. 分两步 1.增加属性表配置特征值 同时添加宏定义 2.修改发送函数
 
 
 ### 九.lvgl
@@ -380,3 +448,55 @@ ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &panel_handle
     1.  输入设备中只添加触摸板，其他设备相关函数删除
     2.  ``touchpad_is_pressed``函数是用来判断手指的个数，根据cst816的寄存器来写个代码
     3.  ``touchpad_get_xy``就是用来获取坐标的
+11. 记得修改修改 LVGL Configuration 配置颜色和内存 颜色是rgb565 内存是40
+12. lvgl 初始化函数
+    1.  ```lv_tick_task``` 函数:这是定时器的回调函数。每当定时器触发，它就被调用一次，让 LVGL 的内部时钟 +1。
+    ```
+    void lv_tick_task (void)
+    {
+        // 这里的参数 '1' 表示告诉 LVGL：“时间过去了 1 毫秒”
+        lv_tick_inc(1); 
+    }
+
+    ```
+    2.  uics 函数（初始化流程）:
+   
+```
+void uics(void)
+{
+    // 1. 配置定时器参数
+    const esp_timer_create_args_t periodic_timer_args = {
+        .callback = &lv_tick_task, // 设置回调函数
+        .name = "periodic_gui"
+    };
+    
+    // 2. 创建定时器
+    esp_timer_handle_t periodic_timer;
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+    
+    // 3. 启动定时器
+    // 这里的 '1' 单位是微秒
+    // 这意味着定时器每 1 微秒 就会触发一次中断！
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 1 ));
+    
+    // 4. LVGL 核心初始化
+    lv_init();
+    
+    // 5. 初始化显示和触摸驱动
+    lv_port_disp_init();
+    lv_port_indev_init();
+}
+ ```
+
+### 十.gui guider制作lvgl ui界面
+1. 选对gui的界面
+2. 拖配件啥的
+3. 把generated的文件全部复制到你自己的文件夹里
+
+
+
+### 十一.一些问题
+1. 我用的这个硬件的屏幕的颜色的高8位和低8位在发送时的位置是相反的
+2. 而且屏幕本身的颜色是反相的 需要给它反过来
+3. lvgl也需要颜色翻转
+4. 

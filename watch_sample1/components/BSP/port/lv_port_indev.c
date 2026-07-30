@@ -90,7 +90,7 @@ void lv_port_indev_init(void)
      * -----------------*/
 
     /*Initialize your touchpad if you have*/
-    //touchpad_init();
+    touchpad_init();
 
     /*Register a touchpad input device*/
     lv_indev_drv_init(&indev_drv);
@@ -102,32 +102,10 @@ void lv_port_indev_init(void)
      * Mouse
      * -----------------*/
 
-    /*Initialize your mouse if you have*/
-    mouse_init();
+  
 
-    /*Register a mouse input device*/
-    lv_indev_drv_init(&indev_drv);
-    indev_drv.type = LV_INDEV_TYPE_POINTER;
-    indev_drv.read_cb = mouse_read;
-    indev_mouse = lv_indev_drv_register(&indev_drv);
 
-    /*Set cursor. For simplicity set a HOME symbol now.*/
-    lv_obj_t * mouse_cursor = lv_img_create(lv_scr_act());
-    lv_img_set_src(mouse_cursor, LV_SYMBOL_HOME);
-    lv_indev_set_cursor(indev_mouse, mouse_cursor);
 
-    /*------------------
-     * Keypad
-     * -----------------*/
-
-    /*Initialize your keypad or keyboard if you have*/
-    keypad_init();
-
-    /*Register a keypad input device*/
-    lv_indev_drv_init(&indev_drv);
-    indev_drv.type = LV_INDEV_TYPE_KEYPAD;
-    indev_drv.read_cb = keypad_read;
-    indev_keypad = lv_indev_drv_register(&indev_drv);
 
     /*Later you should create group(s) with `lv_group_t * group = lv_group_create()`,
      *add objects to the group with `lv_group_add_obj(group, obj)`
@@ -156,16 +134,19 @@ static void touchpad_read(lv_indev_drv_t * indev_drv, lv_indev_data_t * data)
 {
     static lv_coord_t last_x = 0;
     static lv_coord_t last_y = 0;
+    static int debug_cnt = 0;
 
     /*Save the pressed coordinates and the state*/
     if(touchpad_is_pressed()) {
         touchpad_get_xy(&last_x, &last_y);
         data->state = LV_INDEV_STATE_PR;
+        if (debug_cnt++ % 30 == 0)
+            printf("TOUCH: pressed at (%d, %d)\n", last_x, last_y);
     }
     else {
         data->state = LV_INDEV_STATE_REL;
     }
-    if (last_x>=256)
+    if (last_x >= 256)
     {
         last_x = 0;
     }

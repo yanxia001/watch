@@ -1,4 +1,8 @@
 #include "jfh142.h"
+
+/* 全局变量定义 */
+volatile JFH_Sensor_Data_t jfh_data = {0};
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -63,14 +67,20 @@ static void rx_task(void *arg)
         if (rxBytes > 0) 
         {
             JFHdata[rxBytes] = 0;
-            printf("心率血压数据:\r\n");
-            for (size_t i = 0; i < 100; i++)
-            {
+            //printf("心率血压数据:\r\n");
+            // for (size_t i = 0; i < 100; i++)
+            // {
 
-                printf("%02X ",JFHdata[i]);
+            //     //printf("%02X ",JFHdata[i]);
                 
-            }
-            printf("数据打印完毕\r\n");
+            // }
+            // //printf("数据打印完毕\r\n");
+            
+            jfh_data.heart_rate = JFHdata[65];
+            jfh_data.oxygen     = JFHdata[66];
+            jfh_data.fatigue    = JFHdata[68];
+            jfh_data.sys_bp     = JFHdata[71];
+            jfh_data.dia_bp     = JFHdata[72];
             printf("心率 = %d 血氧 = %d 收缩压 = %d 舒张压 = %d ,疲劳指数 = %d\r\n",JFHdata[65],JFHdata[66],JFHdata[71],JFHdata[72],JFHdata[68]);
  // ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
  // ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);

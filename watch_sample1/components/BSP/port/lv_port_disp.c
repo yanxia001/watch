@@ -99,7 +99,7 @@ void lv_port_disp_init(void)
     buf_3_1 = malloc(MY_DISP_HOR_RES *MY_DISP_VER_RES*sizeof(lv_color_t)); /*A screen sized buffer*/
     buf_3_2 = malloc(MY_DISP_HOR_RES *MY_DISP_VER_RES*sizeof(lv_color_t));
     lv_disp_draw_buf_init(&draw_buf_dsc_3, buf_3_1, buf_3_2,
-                          MY_DISP_VER_RES * MY_DISP_VER_RES);   /*Initialize the display buffer*/
+                          MY_DISP_HOR_RES * MY_DISP_VER_RES);   /*Initialize the display buffer*/
 
     /*-----------------------------------
      * Register the display in LVGL
@@ -141,7 +141,7 @@ static esp_lcd_panel_handle_t panel_handle = NULL;
 static void disp_init(void)
 {
     panel_handle= st_init();
-    lcd_clear_screen_line_by_line(panel_handle, 0xf100);
+    lcd_clear_screen_line_by_line(panel_handle, 0x0000);
 }
 
 volatile bool disp_flush_enabled = true;
@@ -165,19 +165,11 @@ void disp_disable_update(void)
  *'lv_disp_flush_ready()' has to be called when finished.*/
 static void disp_flush(lv_disp_drv_t * disp_drv, const lv_area_t * area, lv_color_t * color_p)
 {
-    if(disp_flush_enabled) {
-        /*The most simple case (but also the slowest) to put all pixels to the screen one-by-one*/
-
-        int32_t x;
-        int32_t y;
-        for(y = area->y1; y <= area->y2; y++) {
-            for(x = area->x1; x <= area->x2; x++) {
-                /*Put a pixel to the display. For example:*/
-                /*put_px(x, y, *color_p)*/
-                color_p++;
-            }
-        }
-        
+    if(disp_flush_enabled && panel_handle != NULL) {
+        int w = area->x2 - area->x1 + 1;
+        int h = area->y2 - area->y1 + 1;
+        esp_lcd_panel_draw_bitmap(panel_handle, area->x1, area->y1,
+                                  area->x2 + 1, area->y2 + 1, color_p);
     }
 
     /*IMPORTANT!!!

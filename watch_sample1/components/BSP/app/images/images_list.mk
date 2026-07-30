@@ -1,0 +1,1 @@
+GEN_CSRCS += _138149058_p0_master1200_alpha_240x280.c _back_alpha_240x280.c _hai_alpha_60x60.c _zhi_alpha_60x60.c _xin_alpha_60x60.c _130189906_p0_master1200_alpha_240x280.c

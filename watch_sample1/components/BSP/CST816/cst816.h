@@ -19,7 +19,7 @@
 #define CST816T_RST_PIN_SET()   do{ gpio_set_level(CST816T_RST_PIN,1); }while(0)
 #define CST816T_RST_PIN_RESET() do{ gpio_set_level(CST816T_RST_PIN,0); }while(0)
 
-#define GestureID       0x01 //手势码。0x00：无手势，0x01：上滑，0x02：下滑，0x03：左滑，0x04：右滑，0x05：单击，0x0B：双击，0x0C：长按。
+#define GestureID       0x01 //手势码。0x00无手势 Ox01上滑 0x02:下滑 0x03左滑 Ox04右滑 0x05单击 OxOB双击  OxOC长按
 #define FingerNum       0x02 //手指个数。0：无手指 1：1个手指
 #define XposH           0x03 //X坐标高4位
 #define XposL           0x04 //X坐标低8位
@@ -58,7 +58,7 @@
 
 
 
-
+int cst816t_get_shoushi();
 void cst816t_GPIOinit(void);
 void cst_getxy(uint16_t *x,uint16_t *y);
 

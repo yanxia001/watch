@@ -15,6 +15,6 @@ extern uint8_t AHT21_CRC;
 
 // 函数声明
 void AHT21_Init(void);
-void AHT20_Read(void);
+void AHT20_Read(float *hum , float *tem);
 
 #endif

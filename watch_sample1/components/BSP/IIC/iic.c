@@ -91,7 +91,13 @@ int i2c_read(uint8_t reg, uint8_t *data, uint8_t len)
     return 0;
 }
 
-void delay_ms(unsigned long ms) 
+void iic_write_byte_0( uint8_t a, uint8_t b, uint8_t dat)
+{
+    uint8_t write_buf[2] = {b, dat};
+    i2c_master_write_to_device(I2C_NUM_0, a, write_buf, 2, 1000 / 1);
+}
+
+void delay_ms(unsigned long ms)
 {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }

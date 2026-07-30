@@ -102,7 +102,8 @@ uint8_t bmp280_read(int16_t *temp, int32_t *pressure)
 #define LAPSE_RATE 0.0065 // 标准气温垂直梯度(°C/m) 
 double calculate_altitude(double pressure) { 
  // 使用巴罗米特高度公式计算海拔高度
-    return 44330.0 * (1.0 - pow(pressure / SEA_LEVEL_PRESSURE, 0.1903)); 
+    double pressure_hpa = pressure / 100.0; 
+    return 44330.0 * (1.0 - pow(pressure_hpa / SEA_LEVEL_PRESSURE, 0.1903)); 
 } 
 double calculate_pressure(double altitude) { 
  // 使用巴罗米特高度公式计算气压

@@ -41,6 +41,9 @@ void cst816t_GPIOinit(void)
     delay_ms(10);            // 保持低电平 10ms
     CST816T_RST_PIN_SET();   // 拉高复位脚（结束复位）
     delay_ms(50);            // 等待芯片内部电路稳定（延时很重要）
+
+    // 4. 禁用自动休眠，否则芯片2秒无触摸后会进入低功耗，I2C不响应
+    iic_write_byte_0(CST816T_ADDR, DisAutoSleep, 0x01);
 }
  
 void cst_getxy(uint16_t *x,uint16_t *y)
@@ -58,6 +61,12 @@ int cst816t_get_touch_points_num()
     return (int)a;
 }
  
+int cst816t_get_shoushi()
+{ 
+    uint8_t a = 0;
+    iic_read_bytes_0(CST816T_ADDR,GestureID,&a,1);
+    return (int)a;
+}
 // /*
 // 函数功能：触摸屏触摸中断服务函数
 // 形   参：中断引脚号

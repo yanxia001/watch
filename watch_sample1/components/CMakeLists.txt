@@ -1,4 +1,12 @@
 
+set(src_dirs 
+
+ )
+set(include_dirs
+
+ )
+set(requires
+ )
 
 set(src_dirs
             BSP/AHT20
@@ -11,8 +19,12 @@ set(src_dirs
             BSP/CST816
             BSP/BLE/gatt_server_service_table/main
             BSP/LED
-           
-            BSP/port)
+            BSP/app
+            BSP/app/images
+            BSP/app/guider_fonts
+            BSP/port
+            BSP/TIME
+            )
 set(include_dirs
             BSP/AHT20
             BSP/IIC
@@ -24,8 +36,10 @@ set(include_dirs
             BSP/CST816
             BSP/BLE/gatt_server_service_table/main
             BSP/LED
-            
-            BSP/port)
+            BSP/app
+            BSP/port
+           
+            BSP/TIME)
 set(requires
             driver
             esp_driver_uart

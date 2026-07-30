@@ -50,7 +50,7 @@ unsigned char CheckCrc8(unsigned char *pDat, unsigned char Lenth)
 }
 
 // AHT21 读取温湿度函数
-void AHT20_Read(void)
+void AHT20_Read(float *hum , float *tem)
 {
     uint8_t sta;
     int timeout;
@@ -108,6 +108,8 @@ void AHT20_Read(void)
         AHT21_Date.Tem = (tem_raw * 200.0) / 1048576.0 - 50.0;
 
         // 7. 打印结果
+        *hum = AHT21_Date.Hum;
+        *tem = AHT21_Date.Tem;
         printf("湿度=%.1f%%  温度=%.1f℃\r\n", AHT21_Date.Hum, AHT21_Date.Tem);
     }
     else
